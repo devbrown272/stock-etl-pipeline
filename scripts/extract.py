@@ -1,11 +1,10 @@
 """
 extract.py
-──────────
-Fetches daily OHLCV (Open/High/Low/Close/Volume) data from the
+Fetches daily data from the
 Alpha Vantage TIME_SERIES_DAILY endpoint.
 
 Free API key: https://www.alphavantage.co/support/#api-key
-Rate limit   : 25 requests/day on free tier → we batch 5 tickers easily.
+Rate limit   : 25/day
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://www.alphavantage.co/query"
 API_KEY  = os.environ["ALPHA_VANTAGE_API_KEY"]   # set in Airflow Variables/Connections
 
-# How many trading days to pull on each run (controls backfill depth)
+# How many trading days to pull (controls backfill depth)
 OUTPUT_SIZE = "compact"   # "compact" = last 100 days; "full" = 20+ years
 
 
@@ -51,7 +50,7 @@ def fetch_stock_data(ticker: str, retries: int = 3) -> dict:
             response.raise_for_status()
             payload = response.json()
 
-            # Alpha Vantage returns error messages inside a 200 response body
+            # Alpha Vantage will give error for more than 200 pulls
             if "Error Message" in payload:
                 raise ValueError(f"Alpha Vantage error for {ticker}: {payload['Error Message']}")
             if "Note" in payload:
@@ -68,4 +67,4 @@ def fetch_stock_data(ticker: str, retries: int = 3) -> dict:
             logger.warning("Attempt %d/%d failed for %s: %s", attempt, retries, ticker, exc)
             if attempt == retries:
                 raise
-            time.sleep(5 * attempt)   # exponential back-off
+            time.sleep(5 * attempt)   # back off girlie
