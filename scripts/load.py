@@ -1,11 +1,10 @@
 """
 load.py
-───────
 Upserts transformed stock records into MySQL using mysql-connector-python.
 
 Strategy: INSERT ... ON DUPLICATE KEY UPDATE
-  - Primary key is (ticker, trade_date) — so re-running the DAG is idempotent.
-  - Only the mutable columns (prices, volume, derived metrics) are updated on conflict.
+  - Primary key is (ticker, trade_date)
+  - Only certain columns (prices, volume, derived metrics) are updated on conflict.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ from mysql.connector import Error as MySQLError
 
 logger = logging.getLogger(__name__)
 
-# ── Connection config (pulled from env / Airflow Variables) ───────────────────
+# Connection config (pulled from Airflow Variables)
 DB_CONFIG = {
     "host":     os.environ.get("MYSQL_HOST",     "localhost"),
     "port":     int(os.environ.get("MYSQL_PORT", "3306")),
@@ -51,7 +50,7 @@ ON DUPLICATE KEY UPDATE
 
 def load_to_mysql(records: list[dict], batch_size: int = 100) -> None:
     """
-    Upsert a list of stock records into the stock_prices table.
+    Adds list to table.
 
     Parameters
     ----------
@@ -67,7 +66,7 @@ def load_to_mysql(records: list[dict], batch_size: int = 100) -> None:
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor()
 
-        # Batch the upserts to avoid oversized payloads
+        # Batch to avoid server strain
         for i in range(0, len(records), batch_size):
             batch = records[i : i + batch_size]
             cursor.executemany(UPSERT_SQL, batch)
