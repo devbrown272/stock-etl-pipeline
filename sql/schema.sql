@@ -1,8 +1,6 @@
--- =============================================================================
+
 -- schema.sql
--- Run this once to set up the database and tables.
 -- Usage: mysql -u root -p < sql/schema.sql
--- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS stock_db
     CHARACTER SET utf8mb4
@@ -10,9 +8,8 @@ CREATE DATABASE IF NOT EXISTS stock_db
 
 USE stock_db;
 
--- -----------------------------------------------------------------------------
 -- Main fact table: one row per (ticker, trading day)
--- -----------------------------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS stock_prices (
     id           BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
     ticker       VARCHAR(10)      NOT NULL COMMENT 'Stock symbol e.g. AAPL',
@@ -25,7 +22,7 @@ CREATE TABLE IF NOT EXISTS stock_prices (
     close        DECIMAL(12, 4)   NOT NULL,
     volume       BIGINT UNSIGNED  NOT NULL,
 
-    -- Derived metrics (calculated in transform.py)
+    -- Derived metrics
     daily_return DECIMAL(8, 4)    NULL     COMMENT '% change vs previous close',
     price_range  DECIMAL(12, 4)   NOT NULL COMMENT 'Intraday high - low spread',
 
@@ -34,7 +31,7 @@ CREATE TABLE IF NOT EXISTS stock_prices (
     ingested_at  DATETIME         NOT NULL COMMENT 'UTC timestamp of ETL run',
 
     PRIMARY KEY (id),
-    UNIQUE KEY uq_ticker_date (ticker, trade_date),   -- enables idempotent upserts
+    UNIQUE KEY uq_ticker_date (ticker, trade_date),
     INDEX idx_ticker       (ticker),
     INDEX idx_trade_date   (trade_date),
     INDEX idx_daily_return (daily_return)
@@ -42,10 +39,7 @@ CREATE TABLE IF NOT EXISTS stock_prices (
   DEFAULT CHARSET=utf8mb4
   COMMENT='Daily OHLCV stock prices loaded by Airflow ETL pipeline';
 
-
--- -----------------------------------------------------------------------------
--- Optional: a view for quick analysis
--- -----------------------------------------------------------------------------
+--quick analysis
 CREATE OR REPLACE VIEW v_stock_summary AS
 SELECT
     ticker,
