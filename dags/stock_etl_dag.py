@@ -1,9 +1,9 @@
 """
 stock_etl_dag.py
 ────────────────
-Daily ETL pipeline: Alpha Vantage API → transform → MySQL
+Daily ETL pipeline: Alpha Vantage API then transform then MySQL
 
-Schedule: Every weekday at 6:00 PM UTC (after US market close)
+Schedule: weekday 6:00 PM UTC
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from scripts.load import load_to_mysql
 
 logger = logging.getLogger(__name__)
 
-# ── DAG default args ──────────────────────────────────────────────────────────
+# DAG default args
 DEFAULT_ARGS = {
     "owner": "portfolio",
     "depends_on_past": False,
@@ -31,24 +31,24 @@ DEFAULT_ARGS = {
     "retry_delay": timedelta(minutes=5),
 }
 
-# ── Stocks to track ───────────────────────────────────────────────────────────
+# StoNcks
 TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"]
 
 
-# ── Task functions ─────────────────────────────────────────────────────────────
+# Task FUNctions
 
 def extract_task(ticker: str, **context) -> dict:
     """Pull daily OHLCV data from Alpha Vantage for a single ticker."""
     logger.info("Extracting data for %s", ticker)
     raw = fetch_stock_data(ticker)
-    # Push raw payload to XCom so the transform task can consume it
+    # Push raw to xcom to push
     context["ti"].xcom_push(key=f"raw_{ticker}", value=raw)
     logger.info("Extracted %d records for %s", len(raw), ticker)
     return raw
 
 
 def transform_task(ticker: str, **context) -> list[dict]:
-    """Clean and enrich the raw data pulled from XCom."""
+    """Clean and enrich the raw data"""
     raw = context["ti"].xcom_pull(key=f"raw_{ticker}")
     logger.info("Transforming data for %s", ticker)
     records = transform_stock_data(ticker, raw)
@@ -65,7 +65,7 @@ def load_task(ticker: str, **context) -> None:
     logger.info("Load complete for %s", ticker)
 
 
-# ── DAG definition ────────────────────────────────────────────────────────────
+# DAG definition
 with DAG(
     dag_id="stock_market_etl",
     default_args=DEFAULT_ARGS,
@@ -96,5 +96,5 @@ with DAG(
             op_kwargs={"ticker": ticker},
         )
 
-        # start → extract → transform → load → end  (per ticker, runs in parallel)
+        # (runs in parallel per ticker)
         start >> extract >> transform >> load >> end
