@@ -1,10 +1,8 @@
 """
 transform.py
-────────────
 Cleans and enriches the raw Alpha Vantage payload.
 
-Transformations applied
-───────────────────────
+Transformations applied:
 1. Rename verbose Alpha Vantage keys → clean column names
 2. Cast all numeric fields to float/int
 3. Calculate daily_return  (% change from previous close)
@@ -21,7 +19,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Alpha Vantage key → our column name
+# Alpha Vantage key for each column
 FIELD_MAP = {
     "1. open":   "open",
     "2. high":   "high",
@@ -33,22 +31,17 @@ FIELD_MAP = {
 
 def transform_stock_data(ticker: str, raw: dict[str, dict]) -> list[dict[str, Any]]:
     """
-    Convert a raw Alpha Vantage time-series dict into a list of clean records.
+    Convert a raw Alpha data into readable
 
-    Parameters
-    ----------
     ticker : stock symbol ("AAPL", etc.)
     raw    : {date_str: {"1. open": "182.50", ...}, ...}
 
     Returns
-    -------
-    List of dicts ready to be inserted into MySQL.
-    """
     if not raw:
         logger.warning("No data to transform for %s", ticker)
         return []
 
-    # Sort dates ascending so we can compute day-over-day returns correctly
+    # Sort dates ascending
     sorted_dates = sorted(raw.keys())
     records: list[dict] = []
     prev_close: float | None = None
@@ -68,7 +61,7 @@ def transform_stock_data(ticker: str, raw: dict[str, dict]) -> list[dict[str, An
             logger.warning("Skipping malformed record %s %s: %s", ticker, date_str, exc)
             continue
 
-        # ── Derived metrics ───────────────────────────────────────────────────
+        # Derived metrics
         daily_return = (
             round((close_p - prev_close) / prev_close * 100, 4)
             if prev_close is not None
@@ -76,7 +69,7 @@ def transform_stock_data(ticker: str, raw: dict[str, dict]) -> list[dict[str, An
         )
         price_range = round(high_p - low_p, 4)
 
-        # ── Data quality flag ─────────────────────────────────────────────────
+        # Data quality flag
         quality_ok = volume > 0 and all(
             v > 0 for v in [open_p, high_p, low_p, close_p]
         )
